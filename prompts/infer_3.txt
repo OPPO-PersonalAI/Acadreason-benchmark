@@ -1,0 +1,6 @@
+Please answer the following question:
+
+Question: {query}
+The following hints might assist you.
+1. hints_methodology:{hints_methodology}
+Please provide an accurate and detailed response.

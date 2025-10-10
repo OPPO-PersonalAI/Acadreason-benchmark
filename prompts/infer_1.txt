@@ -1,0 +1,6 @@
+Please answer the following question:
+
+Question: {query}
+The following hints might assist you.
+1. background:{hints_background}
+Please provide an accurate and detailed response.

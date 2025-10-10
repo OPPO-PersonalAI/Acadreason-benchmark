@@ -1,0 +1,5 @@
+Please answer the following question:
+
+Question: {query}
+
+Provide a precise and detailed response.

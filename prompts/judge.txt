@@ -1,0 +1,33 @@
+
+        **Task:** Judge the following answer to an academic question, based on the provided hints of the question, the checklist on how to judge the answer, and the reasoning path to the answer.
+
+        # Judgement Criteria:
+        1. You should judge in two main aspects:
+            1.1) Aspect 1: You should judge if the **answer** corresponds to the golden answer:
+                - 1 point: the answer contains all the information of the golden answer.
+                - 0 point: The answer receives 0 points if it completely fails to meet or only partially meets the key information required by the golden answer, or if there are contradictions.
+            1.2) Aspect 2: Given every item in the checklist, you should judge independently if the answer meet the requirement. The hints are provided to help you judge:
+                - 1 point: if the reasoning and answer meets the requirement
+                - 0 point: if the reasoning and answer do not meet the requirement, or only partially meet the requirement, it is also 0 point.
+
+        # Data Information
+        ## Below are the inputs:
+        - Question: {query}
+        - Checklist: {checklist}
+        ## Below are the outputs:
+        - Attempted Answer: {response}
+        ## Below is the golden output:
+        - Golden Answer: {golden_truth}
+
+        # Output format: you should response strictly in the json format below. Note that the number of items in the checklist should be equal to the number of items in the justifications and scores for the aspect 2. The number of checklist items can vary.
+        ```json
+        {{
+        "aspect_1_analysis": "Give the reason on how to score the aspect 1",
+        "aspect_1_score": 0, 
+        "aspect_2_scores": [ 
+            {{ "item_1_analysis": "Reason for score on checklist item 1", "item_1_score": 0 }},
+            {{ "item_2_analysis": "Reason for score on checklist item 2", "item_2_score": 0 }}
+        ]
+        }}
+        ```
+        """
