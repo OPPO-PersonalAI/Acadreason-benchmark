@@ -1,7 +1,6 @@
 # 环境变量文件
 .env
 .env.*
-script
 test/
 # 结果文件
 results/

@@ -1,130 +1,11 @@
 # LLM evaluation configuration
 
 models:
-  gpt4o:
-    model: "gpt-4o"
-    api_key: "${OPENAI_API_KEY}"
-    base_url: "${OPENAI_API_BASE}"
-    max_tokens: 5000
-    temperature: 0.1
-
-
-  gpt5:
-    model: "gpt-5"
-    api_key: "${uni_key}"
-    base_url: "${uni_url}"
-    max_tokens: 30000
-    reasoning:
-      effort: "medium"
-
   gpt5mini:
     model: "gpt-5-mini"
-    api_key: "${uni_key}"
-    base_url: "${uni_url}"
-    max_tokens: 30000
-    reasoning:
-      effort: "medium"
-
-  qwen3:
-    model: "kimi-k2-0711-preview"
-    api_key: "${uni_key}"
-    base_url: "${uni_url}"
-    max_tokens: 30000
-    temperature: 0.1
-
-  gptoss:
-    model: "gpt-oss-120b"
     api_key: "${OPENAI_API_KEY}"
     base_url: "${OPENAI_API_BASE}"
-    max_tokens: 50000
-    temperature: 0.1
 
-  deepseekv3:
-    model: "deepseek-v3"
-    api_key: "${OPENAI_API_KEY}"
-    base_url: "${OPENAI_API_BASE}"
-    max_tokens: 5000
-    temperature: 0.1
-
-  deepseekv31_openai:
-    model: "deepseek-v3.1"
-    api_key: "${OPENAI_API_KEY}"
-    base_url: "${OPENAI_API_BASE}"
-    max_tokens: 5000
-    temperature: 0.1
-
-  deepseekv31:
-    model: "deepseek-v3.1"
-    api_key: "${uni_key}"
-    base_url: "${uni_url}"
-    max_tokens: 50000
-    temperature: 0.1
-
-  deepseekr1:
-    model: "deepseek-r1"
-    api_key: "${uni_key}"
-    base_url: "${uni_url}"
-    max_tokens: 20000
-    temperature: 0.1
-
-  o1:
-    model: "o1"
-    api_key: "${OPENAI_API_KEY}"
-    base_url: "${OPENAI_API_BASE}"
-    max_tokens: 10000
-
-  o3:
-    model: "o3"
-    api_key: "${uni_key}"
-    base_url: "${uni_url}"
-    max_tokens: 100000
-
-  gemini25pro:
-    model: "gemini-2.5-pro"
-    api_key: "${uni_key}"
-    base_url: "${uni_url}"
-    max_tokens: 10000
-
-  claude4:
-    model: "claude-sonnet-4-20250514"
-    api_key: "${uni_key}"
-    base_url: "${uni_url}"
-    max_tokens: 5000
-
-  claude37:
-    model: "claude-3.7-sonnet-20250219"
-    api_key: "${uni_key}"
-    base_url: "${uni_url}"
-    max_tokens: 5000
-    temperature: 0.1
-
-  o3-dr:
-    model: "o3-deep-research"
-    api_key: "${uni_key}"
-    base_url: "${uni_url}"
-    max_tokens: 300000
-    timeout: 300000
-
-  o4_mini_dr:
-    model: "o4-mini-dr"
-    api_key: "${AGENT_API_KEY}"
-    base_url: "${AGENT_API_BASE}"
-    max_tokens: 5000
-    temperature: 0.1
-
-  gemini_2.5_flash_deepsearch_async:
-    model: "gemini-2.5-flash-deepsearch-async"
-    api_key: "${AGENT_API_KEY}"
-    base_url: "${AGENT_API_BASE}"
-    max_tokens: 5000
-    temperature: 0.1
-
-  gemini_2.5_pro_deepsearch_async:
-    model: "gemini-2.5-pro-deepsearch-async"
-    api_key: "${AGENT_API_KEY}"
-    base_url: "${AGENT_API_BASE}"
-    max_tokens: 20000
-    temperature: 0.1
 
 
 experiments:
@@ -136,40 +17,6 @@ experiments:
     input_data: "data/acadreason_benchmark.jsonl"
     description: "No hints; non-math tasks"
 
-  infer_50_hints1:
-    type: "infer"
-    models: ["gptoss", "kimik2", "deepseekv31", "qwen3"]
-    prompt_file: "prompts/infer_1.txt"
-    input_data: "data/acadreason_benchmark.jsonl"
-    description: "Background hint; non-math tasks"
-
-  infer_50_hints2:
-    type: "infer"
-    models: ["gptoss", "kimik2", "deepseekv31", "qwen3"]
-    prompt_file: "prompts/infer_2.txt"
-    input_data: "data/raw/bench_50.jsonl"
-    description: "Method hint; non-math tasks"
-
-  infer_50_hints3:
-    type: "infer"
-    models: ["gptoss", "kimik2", "deepseekv31", "qwen3"]
-    prompt_file: "prompts/infer_3.txt"
-    input_data: "data/raw/bench_50.jsonl"
-    description: "Method hint; non-math tasks"
-
-  infer_50_hints4:
-    type: "infer"
-    models: ["gptoss", "kimik2", "deepseekv31", "qwen3"]
-    prompt_file: "prompts/infer_4.txt"
-    input_data: "data/raw/bench_50.jsonl"
-    description: "Method hint; non-math tasks"
-
-  test_agent:
-    type: "infer"
-    models: ["o4_mini_dr_async"]
-    prompt_file: "prompts/infer.txt"
-    input_data: "data/raw/bench_law_cs_phi.jsonl"
-    description: "Gemini agent test"
 
   judge_infer_50_hints0:
     type: "judge"
@@ -182,50 +29,6 @@ experiments:
     return_json: true
     description: "Judge results of infer_50_hints0"
 
-  judge_infer_50_hints1:
-    type: "judge"
-    models: ["gpt5mini"]
-    prompt_file: "prompts/judge.txt"
-    input_data: "infer_50_hints1"
-    input_field: "response"
-    return_json: true
-    description: "Judge results of infer_50_hints1"
-
-  judge_infer_50_hints2:
-    type: "judge"
-    models: ["gpt5mini"]
-    prompt_file: "prompts/judge.txt"
-    input_data: "infer_50_hints2"
-    input_field: "response"
-    return_json: true
-    description: "Judge results of infer_50_hints2"
-
-  judge_infer_50_hints3:
-    type: "judge"
-    models: ["gpt5mini"]
-    prompt_file: "prompts/judge.txt"
-    input_data: "infer_50_hints3"
-    input_field: "response"
-    return_json: true
-    description: "Judge results of infer_50_hints3"
-
-  judge_infer_50_hints4:
-    type: "judge"
-    models: ["gpt5mini"]
-    prompt_file: "prompts/judge.txt"
-    input_data: "infer_50_hints4"
-    input_field: "response"
-    return_json: true
-    description: "Judge results of infer_50_hints4"
-
-  judge_test:
-    type: "judge"
-    models: ["gpt41"]
-    prompt_file: "prompts/judge.txt"
-    input_data: "test_agent"
-    input_field: "response"
-    return_json: true
-    description: "Judge results of test_agent"
 
 
 defaults:
