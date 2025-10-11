@@ -1,6 +1,6 @@
 # ACADREASON Benchmark 🧠📚
 
-[**🤗 Hugging Face**](https://huggingface.co/datasets/Ross12/Acadreason？？) | [**📖 Acadreason arXiv**](？？)
+[**🤗 Hugging Face**](https://huggingface.co/datasets/Ross12/Acadreason) | [**📖 Acadreason arXiv**](？？)
 
 This repo contains the evaluation code and dataset for the paper [**ACADREASON: Exploring the Limits of Reasoning Models with Academic Research Problems**](??).
 

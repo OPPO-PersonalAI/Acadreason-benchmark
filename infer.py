@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-独立推理入口。
-示例:
+Standalone inference entry point.
+Example:
   python infer.py --experiment exp1_basic_qa --limit 10
 """
 
@@ -11,13 +11,13 @@ from utils.process_infer import run_infer_experiment
 
 
 def main():
-    parser = argparse.ArgumentParser(description="LLM 推理入口")
-    parser.add_argument("--experiment", required=True, help="实验名称")
-    parser.add_argument("--data", help="数据文件路径（可选，覆盖配置文件中的设置）")
-    parser.add_argument("--models", help="指定模型列表（逗号分隔），覆盖配置文件中的设置")
-    parser.add_argument("--limit", type=int, help="限制处理数量（用于测试）")
-    parser.add_argument("--no-resume", action="store_true", help="禁用Resume功能")
-    parser.add_argument("--config", default="config.yaml", help="配置文件路径")
+    parser = argparse.ArgumentParser(description="LLM Inference Entry Point")
+    parser.add_argument("--experiment", required=True, help="Experiment name")
+    parser.add_argument("--data", help="Data file path (optional, overrides config file setting)")
+    parser.add_argument("--models", help="Specify model list (comma-separated), overrides config file setting")
+    parser.add_argument("--limit", type=int, help="Limit processing count (for testing)")
+    parser.add_argument("--no-resume", action="store_true", help="Disable resume functionality")
+    parser.add_argument("--config", default="config.yaml", help="Configuration file path")
     args = parser.parse_args()
 
     models_override = [m.strip() for m in args.models.split(',')] if args.models else None
@@ -29,7 +29,7 @@ def main():
         resume=not args.no_resume,
         models_override=models_override,
     )
-    # 简要打印
+    # Print summary
     for s in stats:
         print(f"{s['model']}: {s['successful']}/{s['total']} ({s['success_rate']:.1%}) -> {s['output_file']}")
 
