@@ -27,7 +27,7 @@ ACADREASON was built through a meticulous process: collecting 430 high-quality p
 
 For more details, refer to the dataset file:
 
-- `data/acadreason_benchmark.jsonl` - Main dataset (50 questions).
+- `data/acadreason_benchmark.jsonl` -  dataset (50 questions).
 
 
 
