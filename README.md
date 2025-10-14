@@ -1,12 +1,12 @@
 # ACADREASON Benchmark 🧠📚
 
-[**🤗 Hugging Face**](https://huggingface.co/datasets/Ross12/Acadreason) | [**📖 Acadreason arXiv**](？？)
+[**🤗 Hugging Face**](https://huggingface.co/datasets/PersonalAILab/Acadreason_benchmark) | [**📖 Acadreason arXiv**](http://arxiv.org/abs/2510.11652)
 
-This repo contains the evaluation code and dataset for the paper [**ACADREASON: Exploring the Limits of Reasoning Models with Academic Research Problems**](??).
+This repo contains the evaluation code and dataset for the paper [**ACADREASON: Exploring the Limits of Reasoning Models with Academic Research Problems**](http://arxiv.org/abs/2510.11652).
 
 ## 🔔 News
 
-- **🔥[2025-10-9] Introducing ACADREASON, a challenging benchmark for evaluating LLMs and agents on high-level academic reasoning tasks! 🚀**
+- **🔥[2025-10-14] Introducing ACADREASON, a challenging benchmark for evaluating LLMs and agents on high-level academic reasoning tasks! 🚀**
 
 ## 🧩 Introduction
 
@@ -93,10 +93,12 @@ Configurations are managed in `config.yaml`:
 **🔖 BibTeX:**
 
 ```bibtex
-@article{acadreason2025,
-  title={ACADREASON: Exploring the Limits of Reasoning Models with Academic Research Problems},
-  author={??},
-  journal={arXiv preprint arXiv:???},
-  year={2025}
+@misc{acadreason2025,
+      title={ACADREASON: Exploring the Limits of Reasoning Models with Academic Research Problems}, 
+      author={Xin Gui and King Zhu and JinCheng Ren and Qianben Chen and Zekun Moore Wang and Yizhi LI and Xinpeng Liu and Xiaowan Li and Wenli Ren and Linyu Miao and Tianrui Qin and Ziqi Shu and He Zhu and Xiangru Tang and Dingfeng Shi and Jiaheng Liu and Yuchen Eleanor Jiang and Minghao Liu and Ge Zhang and Wangchunshu Zhou},
+      year={2025},
+      eprint={2510.11652},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
 }
 ```
