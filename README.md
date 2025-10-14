@@ -93,12 +93,10 @@ Configurations are managed in `config.yaml`:
 **🔖 BibTeX:**
 
 ```bibtex
-@misc{acadreason2025,
-      title={ACADREASON: Exploring the Limits of Reasoning Models with Academic Research Problems}, 
-      author={Xin Gui and King Zhu and JinCheng Ren and Qianben Chen and Zekun Moore Wang and Yizhi LI and Xinpeng Liu and Xiaowan Li and Wenli Ren and Linyu Miao and Tianrui Qin and Ziqi Shu and He Zhu and Xiangru Tang and Dingfeng Shi and Jiaheng Liu and Yuchen Eleanor Jiang and Minghao Liu and Ge Zhang and Wangchunshu Zhou},
-      year={2025},
-      eprint={2510.11652},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
+@article{acadreason2025,
+  title={ACADREASON: Exploring the Limits of Reasoning Models with Academic Research Problems},
+  author={Xin Gui and King Zhu and JinCheng Ren and Qianben Chen and Zekun Moore Wang and Yizhi LI and Xinpeng Liu and Xiaowan Li and Wenli Ren and Linyu Miao and Tianrui Qin and Ziqi Shu and He Zhu and Xiangru Tang and Dingfeng Shi and Jiaheng Liu and Yuchen Eleanor Jiang and Minghao Liu and Ge Zhang and Wangchunshu Zhou},
+  journal={arXiv preprint arXiv:2510.11652},
+  year={2025}
 }
 ```
