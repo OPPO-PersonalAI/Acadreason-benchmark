@@ -4,7 +4,6 @@
 test/
 # 结果文件
 results/
-*.jsonl
 
 
 # Python缓存
