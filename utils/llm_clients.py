@@ -1,3 +1,19 @@
+#!/usr/bin/env python
+# coding=utf-8
+# Copyright 2025 The OPPO Inc. PersonalAI team. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import time
 import json
 from typing import Dict, Any, Union
@@ -34,14 +50,14 @@ class ClientsRegistry:
             self.clients[model_name] = client_config
 
     def call_llm(self, model_name: str, prompt: str, return_json: bool = False, max_retries: int = 3) -> Union[str, Dict]:
-        # 就近环境校验：仅校验当前模型所需字段是否为真实值（非占位符）
+        # Local environment validation: only validate that current model's required fields are real values (not placeholders)
         model_config = self.clients.get(model_name)
         if not model_config:
             return None
         for key in ['api_key', 'base_url', 'model']:
             value = model_config.get(key)
             if not value or (isinstance(value, str) and value.startswith('${') and value.endswith('}')):
-                # 缺少必要配置：优雅返回 None，由上层处理为failed/skip
+                # Missing required configuration: gracefully return None, let upper layer handle as failed/skip
                 return None
 
         for attempt in range(max_retries):
@@ -73,8 +89,8 @@ class ClientsRegistry:
 
                 if return_json:
                     request_params["response_format"] = {"type": "json_object"}
-                    if "请以JSON格式返回" not in prompt:
-                        request_params["messages"][0]["content"] = prompt + "\n\n请以JSON格式返回结果。"
+                    if "Please return results in JSON format" not in prompt:
+                        request_params["messages"][0]["content"] = prompt + "\n\nPlease return results in JSON format."
 
                 response = client.chat.completions.create(**request_params)
                 content = response.choices[0].message.content
@@ -90,5 +106,3 @@ class ClientsRegistry:
                     time.sleep(wait_time)
                 else:
                     return None
-
-

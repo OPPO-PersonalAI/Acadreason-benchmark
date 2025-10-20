@@ -1,7 +1,22 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
+# coding=utf-8
+# Copyright 2025 The OPPO Inc. PersonalAI team. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
-单独模型测试脚本
-用法: 
+Single model test script
+Usage: 
 python script/test_single_model.py gpt4o
 python script/test_single_model.py o1
 """
@@ -27,7 +42,7 @@ def replace_env_vars(obj):
     return obj
 
 def test_model(model_name, config):
-    print(f"🔧 测试: {model_name} ({config['model']})")
+    print(f"🔧 Testing: {model_name} ({config['model']})")
     
     try:
         client = OpenAI(api_key=config['api_key'], base_url=config['base_url'])
@@ -35,28 +50,28 @@ def test_model(model_name, config):
         start = time.time()
         response = client.chat.completions.create(
             model=config['model'],
-            messages=[{"role": "user", "content": "你是谁?"}],
+            messages=[{"role": "user", "content": "Who are you?"}],
             max_tokens=5000  
         )
         elapsed = time.time() - start
         
         content = response.choices[0].message.content
-        print(f"📝 响应内容: '{content}' (长度: {len(content) if content else 0})")
-        print(f"⏱️ 耗时: {elapsed:.1f}s")
+        print(f"📝 Response content: '{content}' (length: {len(content) if content else 0})")
+        print(f"⏱️ Time elapsed: {elapsed:.1f}s")
         
         if content and content.strip():
-            print(f"✅ 成功")
+            print(f"✅ Success")
             return True
         else:
-            print(f"⚠️ 响应为空")
+            print(f"⚠️ Empty response")
             return False
     except Exception as e:
-        print(f"❌ 失败: {e}")
+        print(f"❌ Failed: {e}")
         return False
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
-        print("用法: python script/test_single_model.py <model_name>")
+        print("Usage: python script/test_single_model.py <model_name>")
         sys.exit(1)
     
     model_name = sys.argv[1]
@@ -67,8 +82,8 @@ if __name__ == "__main__":
     
     models = config.get('models', {})
     if model_name not in models:
-        print(f"❌ 模型 '{model_name}' 不存在")
-        print(f"可用: {', '.join(models.keys())}")
+        print(f"❌ Model '{model_name}' does not exist")
+        print(f"Available: {', '.join(models.keys())}")
         sys.exit(1)
     
-    test_model(model_name, models[model_name]) 
+    test_model(model_name, models[model_name])

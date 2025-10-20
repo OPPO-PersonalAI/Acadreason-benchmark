@@ -6,6 +6,7 @@ This repo contains the evaluation code and dataset for the paper [**ACADREASON: 
 
 ## 🔔 News
 
+- **🔥[2025-10-20] Code and dataset are now open-sourced! Check our [GitHub](https://github.com/OPPO-PersonalAI/Acadreason-benchmark) and [Hugging Face](https://huggingface.co/datasets/PersonalAILab/Acadreason_benchmark) for full access! 🚀**
 - **🔥[2025-10-14] Introducing ACADREASON, a challenging benchmark for evaluating LLMs and agents on high-level academic reasoning tasks! 🚀**
 
 ## 🧩 Introduction
@@ -89,7 +90,6 @@ Configurations are managed in `config.yaml`:
 This project uses the Apache License 2.0, see the [LICENSE] file for details.
 
 ## 📝 Citation
-
 **🔖 BibTeX:**
 
 ```bibtex

@@ -1,3 +1,19 @@
+#!/usr/bin/env python
+# coding=utf-8
+# Copyright 2025 The OPPO Inc. PersonalAI team. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import json
 from typing import Dict, Any, Union, List, Optional
 from utils.data_utils import normalize_query_for_resume
@@ -56,13 +72,13 @@ def parse_judge_response(response: Union[str, Dict]) -> Dict:
                 parsed_result["parsed_scores"] = judge_data
                 parsed_result["parse_success"] = True
             else:
-                parsed_result["parse_error"] = f"缺少必要字段: {[f for f in required_fields if f not in judge_data]}"
+                parsed_result["parse_error"] = f"Missing required fields: {[f for f in required_fields if f not in judge_data]}"
         else:
-            parsed_result["parse_error"] = "无法解析为有效的JSON字典"
+            parsed_result["parse_error"] = "Unable to parse as valid JSON dict"
     except json.JSONDecodeError as e:
-        parsed_result["parse_error"] = f"JSON解析错误: {str(e)}"
+        parsed_result["parse_error"] = f"JSON parsing error: {str(e)}"
     except Exception as e:
-        parsed_result["parse_error"] = f"解析异常: {str(e)}"
+        parsed_result["parse_error"] = f"Parsing exception: {str(e)}"
     return parsed_result
 
 
@@ -101,7 +117,7 @@ def calculate_judge_scores(judge_data: Dict, num_checklist: int) -> Dict:
         }
     except Exception as e:
         return {
-            "error": f"分数计算错误: {str(e)}",
+            "error": f"Score calculation error: {str(e)}",
             "aspect_1": {"score": 0, "max_score": 2, "percentage": 0},
             "aspect_2": {"total_score": 0, "max_score": 0, "percentage": 0},
             "overall": {"total_score": 0, "max_score": 0, "percentage": 0}
@@ -146,8 +162,9 @@ def build_num_checklist_map_from_file(source_path: str = "data/raw/bench_50.json
     except Exception:
         return {}
 
-# 
+
 def build_authoritative_data_cache(source_path: str = "data/raw/bench_50.jsonl") -> Dict[str, Dict[str, Any]]:
+    """Build authoritative data cache from source file"""
     cache: Dict[str, Dict[str, Any]] = {}
     try:
         import os
@@ -188,7 +205,7 @@ def get_num_checklist_for_item(item: Dict[str, Any], num_map: Dict[str, int]) ->
 
 def supplement_missing_fields(item: Dict[str, Any], cache: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
     try:
-        # 已有字段优先（加入 prompt 兜底以兼容 AFM 输出）
+        # Prioritize existing fields (include prompt as fallback for AFM output compatibility)
         candidate_keys = ['query', 'question', 'hints_background', 'title', 'golden_truth', 'prompt']
         authoritative_record: Optional[Dict[str, Any]] = None
         for field_name in candidate_keys:
@@ -200,7 +217,7 @@ def supplement_missing_fields(item: Dict[str, Any], cache: Dict[str, Dict[str, A
                 authoritative_record = cache[norm_key]
                 break
 
-        # 若仍未匹配，尝试以 id/task_id 进行匹配（适配 AFM 的 id 字段）
+        # If still no match, try matching by id/task_id (for AFM id field compatibility)
         if not authoritative_record:
             possible_ids = [item.get('task_id'), item.get('id'), item.get('taskId')]
             item_task_id: Optional[int] = None
@@ -241,5 +258,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-

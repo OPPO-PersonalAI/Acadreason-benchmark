@@ -1,8 +1,24 @@
+#!/usr/bin/env python
+# coding=utf-8
+# Copyright 2025 The OPPO Inc. PersonalAI team. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 
 
 def load_env_file(env_path: str = ".env"):
-    """加载.env文件中的环境变量"""
+    """Load environment variables from .env file"""
     if os.path.exists(env_path):
         with open(env_path, 'r', encoding='utf-8') as f:
             for line in f:
@@ -13,11 +29,11 @@ def load_env_file(env_path: str = ".env"):
 
 
 def replace_env_vars(obj, strict: bool = False):
-    """递归替换配置中的环境变量引用，形如 ${VAR}
+    """Recursively replace environment variable references in config, format ${VAR}
 
-    参数:
-        strict: 为 True 时，缺失的环境变量会抛出异常；
-                为 False 时（默认），保留占位符原样，延迟到实际使用处再校验。
+    Args:
+        strict: When True, missing environment variables will raise an exception;
+                When False (default), placeholders are kept as-is and validated later at usage time.
     """
     if isinstance(obj, dict):
         return {k: replace_env_vars(v, strict=strict) for k, v in obj.items()}
@@ -29,8 +45,8 @@ def replace_env_vars(obj, strict: bool = False):
             value = os.getenv(env_var)
             if value is None:
                 if strict:
-                    raise ValueError(f"环境变量 {env_var} 未设置")
-                # 非严格模式下，保留占位符，后续在实际用到时再校验
+                    raise ValueError(f"Environment variable {env_var} is not set")
+                # In non-strict mode, keep placeholder for later validation at usage time
                 return obj
             return value
         return obj
@@ -46,10 +62,8 @@ def main():
         result = replace_env_vars(text, strict=False)
         print(result)
     else:
-        print("env_utils: 已加载 .env 并支持 ${VAR} 替换")
+        print("env_utils: loaded .env and supports ${VAR} replacement")
 
 
 if __name__ == "__main__":
     main()
-
-

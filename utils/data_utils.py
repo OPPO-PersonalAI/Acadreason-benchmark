@@ -1,3 +1,19 @@
+#!/usr/bin/env python
+# coding=utf-8
+# Copyright 2025 The OPPO Inc. PersonalAI team. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
 import json
 import glob
@@ -6,7 +22,7 @@ from typing import List, Dict
 
 
 def find_matching_files(pattern: str, for_judge: bool = False) -> List[str]:
-    """根据模式匹配文件，支持文件夹输入"""
+    """Find files matching the pattern, supports folder input"""
     matching_files = []
 
     if os.path.exists(pattern):
@@ -56,7 +72,7 @@ def find_matching_files(pattern: str, for_judge: bool = False) -> List[str]:
 def load_data_multi_files(data_path: str, limit: int = None) -> List[Dict]:
     matching_files = find_matching_files(data_path)
     if not matching_files:
-        raise FileNotFoundError(f"未找到匹配模式 '{data_path}' 的文件")
+        raise FileNotFoundError(f"No files found matching pattern '{data_path}'")
 
     all_data = []
     for file_path in matching_files:
@@ -103,7 +119,7 @@ def normalize_query_for_resume(query: str) -> str:
 
 
 def process_gemini_deepsearch_response(response: str) -> str:
-    """去除<think>...</think>块（多行）。"""
+    """Remove <think>...</think> blocks (multiline)."""
     if not response or not isinstance(response, str):
         return response
     import re
@@ -115,33 +131,31 @@ def process_gemini_deepsearch_response(response: str) -> str:
 
 
 def main():
-    """非常简单的命令行入口：列出匹配到的 .jsonl 文件。"""
+    """Simple command line entry point: list matched .jsonl files."""
     import argparse
-    parser = argparse.ArgumentParser(description="data_utils: 简单文件匹配演示")
+    parser = argparse.ArgumentParser(description="data_utils: Simple file matching demo")
     parser.add_argument(
         "pattern",
         nargs="?",
         default="results/infer",
-        help="文件/文件夹/实验名/通配符，默认 results/infer",
+        help="File/folder/experiment name/wildcard, default results/infer",
     )
     parser.add_argument(
         "--judge",
         action="store_true",
-        help="仅在 infer 结果目录及其子目录下匹配（评测场景）",
+        help="Only match in infer result directories and subdirectories (judge scenario)",
     )
     args = parser.parse_args()
 
     files = find_matching_files(args.pattern, for_judge=args.judge)
     if not files:
-        print(f"未找到匹配模式 '{args.pattern}' 的文件。")
+        print(f"No files found matching pattern '{args.pattern}'.")
         return
 
-    print(f"共找到 {len(files)} 个匹配文件：")
+    print(f"Found {len(files)} matching files:")
     for p in files:
         print(p)
 
 
 if __name__ == "__main__":
     main()
-
-

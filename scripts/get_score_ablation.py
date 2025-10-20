@@ -1,56 +1,69 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python
+# coding=utf-8
+# Copyright 2025 The OPPO Inc. PersonalAI team. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 """
-综合实验分数统计脚本
-同时处理主实验和消融实验数据，生成包含两个sheet的Excel文件
+Comprehensive experiment score statistics script
+Process both main experiment and ablation experiment data, generate Excel file with multiple sheets
 python scripts/get_score_ablation.py results/judge -o my_results.xlsx -v -c 10
-使用方法：
-1. 基本用法：
+Usage:
+1. Basic usage:
    python scripts/get_score_ablation.py results/judge
    
-2. 指定输出文件：
+2. Specify output file:
    python scripts/get_score_ablation.py results/judge -o my_results.xlsx
    
-3. 显示详细输出：
+3. Show verbose output:
    python scripts/get_score_ablation.py results/judge -v
 
-4. 自定义期望数据条数：
+4. Custom expected data count:
    python scripts/get_score_ablation.py results/judge -c 50
 
-5. 完整用法：
+5. Complete usage:
    python scripts/get_score_ablation.py results/judge -o my_results.xlsx -v -c 50
 
-输入数据结构（固定定义）：
+Input data structure (fixed definition):
 results/judge/
-├── judge_infer_50_hints0/     # 消融实验：无hint
-├── judge_infer_50_hints1/     # 消融实验：Hint1
-├── judge_infer_50_hints2/     # 消融实验：Hint2
-├── judge_infer_50_hints3/     # 消融实验：Hint3
-├── judge_infer_50_hints4/     # 消融实验：Hint1+Hint2+Hint3
+├── judge_infer_50_hints0/     # Ablation experiment: no hint
+├── judge_infer_50_hints1/     # Ablation experiment: Hint1
+├── judge_infer_50_hints2/     # Ablation experiment: Hint2
+├── judge_infer_50_hints3/     # Ablation experiment: Hint3
+├── judge_infer_50_hints4/     # Ablation experiment: Hint1+Hint2+Hint3
 
 
-输出格式：
-- Excel文件包含多个sheet：
-  1. "main"：主实验结果（按category分类，格式：aspect1%/aspect2%）
-  2. 每个hints条件各一个sheet（与main同格式，含各学科列）
-  3. "ablation experiment"：消融实验结果（指定模型，5个hint条件的aspect1%/aspect2%格式）
+Output format:
+- Excel file contains multiple sheets:
+  1. "main": Main experiment results (classified by category, format: aspect1%/aspect2%)
+  2. One sheet per hints condition (same format as main, with discipline columns)
+  3. "ablation experiment": Ablation experiment results (specified models, aspect1%/aspect2% format for 5 hint conditions)
 
-自动支持的模型（无需手动配置）：
-- 自动从文件名提取模型名称
-- 智能生成显示名称
-- 支持复杂模型名称格式
-- 保持一致的排序规则
+Automatic model support (no manual configuration needed):
+- Automatically extract model names from filenames
+- Intelligently generate display names
+- Support complex model name formats
+- Maintain consistent sorting rules
 
-计算方式：
-1. aspect1总分 = 分子得分和/数据条数（每题满分1分，只取分子作为得分）
-2. aspect2总分 = 得分/sum(num_checklist)  
-3. 总分 = (aspect1分子得分和 + aspect2原始总分) / (总checklist数量 + 数据条数)
-4. 按所有可用的category计算总和
+Calculation method:
+1. aspect1 total score = sum of numerator scores / data count (each question max 1 point, only numerator counted)
+2. aspect2 total score = score / sum(num_checklist)  
+3. total score = (aspect1 numerator sum + aspect2 raw total) / (total checklist count + data count)
+4. Calculate sum by all available categories
 
-数据完整性检查：
-- 每个category默认期望50条数据（可通过-c参数自定义）
-- 正常数据处理时不显示，只在最后统一显示有问题的数据
-- 缺失情况会自动保存到带时间戳的txt文件中
+Data completeness check:
+- Each category expects 50 data entries by default (customizable via -c parameter)
+- Not displayed during normal data processing, only shown at the end for problematic data
+- Missing data automatically saved to timestamped txt file
 """
 
 import json
@@ -66,18 +79,18 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment
 from datetime import datetime
 
-# 全局变量收集所有完整性问题
+# Global variable to collect all completeness issues
 all_completeness_issues = []
 
 
-# ========== 模型管理系统 ==========
+# ========== Model Management System ==========
 
 class ModelManager:
-    """模型配置和名称管理器"""
+    """Model configuration and name manager"""
     
-    # 预定义的模型配置（保持向后兼容性和排序优先级）
+    # Predefined model configurations (maintain backward compatibility and sorting priority)
     PREDEFINED_MODELS = {
-        # 核心模型（高优先级）
+        # Core models (high priority)
         'gpt41': {'display_name': 'gpt4.1', 'priority': 100},
         'gpt4o': {'display_name': 'gpt4o', 'priority': 99},
         'gpt5': {'display_name': 'gpt5', 'priority': 98}, 
@@ -88,21 +101,21 @@ class ModelManager:
         'o3-dr': {'display_name': 'o3-dr', 'priority': 93},
         'o4_mini_dr': {'display_name': 'o4_mini_dr', 'priority': 92},
         
-        # DeepSeek系列
+        # DeepSeek series
         'deepseekv3': {'display_name': 'deepseekv3', 'priority': 85},
         'deepseekv31': {'display_name': 'deepseekv31', 'priority': 84},
         'deepseekr1': {'display_name': 'deepseekr1', 'priority': 83},
         
-        # Gemini系列 
+        # Gemini series 
         'gemini25pro': {'display_name': 'gemini2.5pro', 'priority': 75},
         'gemini_2.5_pro_deepsearch_async': {'display_name': 'gemini2.5pro_deepsearch', 'priority': 74},
         'gemini_2.5_flash_deepsearch_async': {'display_name': 'gemini2.5flash_deepsearch', 'priority': 73},
         
-        # AFM系列
+        # AFM series
         'AFM_sft': {'display_name': 'AFM_sft', 'priority': 70},
         'AFM_rl': {'display_name': 'AFM_rl', 'priority': 69},
         
-        # 其他模型
+        # Other models
         'oagent': {'display_name': 'oagent', 'priority': 65},
         'gptoss': {'display_name': 'gptoss', 'priority': 64},
         'kimik2': {'display_name': 'kimik2', 'priority': 63},
@@ -111,34 +124,34 @@ class ModelManager:
     }
     
     def __init__(self):
-        self.discovered_models = {}  # 运行时发现的新模型
+        self.discovered_models = {}  # New models discovered at runtime
     
     def extract_model_name(self, filename: str) -> str:
         """
-        智能提取模型名称，支持各种文件名格式
+        Intelligently extract model name, support various filename formats
         """
         if not filename or not isinstance(filename, str):
             return filename
         
-        # 移除文件扩展名
+        # Remove file extension
         base_name = filename
         if base_name.endswith('.jsonl'):
             base_name = base_name[:-6]
         
-        # 处理不同的文件名格式
+        # Handle different filename formats
         if base_name.startswith('judged_'):
-            # 格式: judged_{model}_{judge}.jsonl
-            name_part = base_name[7:]  # 移除 'judged_' 前缀
+            # Format: judged_{model}_{judge}.jsonl
+            name_part = base_name[7:]  # Remove 'judged_' prefix
             
-            # 文件名格式: judged_{被评判模型}_{judge模型}.jsonl
-            # 我们需要识别出被评判的模型，而不是judge模型
+            # Filename format: judged_{model_being_judged}_{judge_model}.jsonl
+            # We need to identify the model being judged, not the judge model
             
-            # 已知的judge模型列表（这些应该被排除，不作为被评判模型）
+            # Known judge model list (these should be excluded, not treated as models being judged)
             judge_models = {
                 'gpt5mini', 'gpt41', 'gpt4o', 'gpt5', 'claude4', 'o1', 'o3'
             }
             
-            # 特殊处理复杂模型名称（被评判模型，按长度优先匹配）
+            # Special handling for complex model names (models being judged, match by length priority)
             complex_patterns = [
                 'gemini_2.5_pro_deepsearch_async',
                 'gemini_2.5_flash_deepsearch_async', 
@@ -157,30 +170,30 @@ class ModelManager:
                 'seedoss'
             ]
             
-            # 按长度倒序排列，确保长模式优先匹配
+            # Sort by length in descending order, ensure long patterns match first
             complex_patterns.sort(key=len, reverse=True)
             
-            # 首先尝试匹配被评判模型（排除judge模型）
+            # First try to match model being judged (exclude judge models)
             for pattern in complex_patterns:
                 if pattern in name_part:
-                    # 确保这不是judge模型的部分
+                    # Ensure this is not part of judge model
                     remaining = name_part.replace(pattern, '')
-                    # 检查剩余部分是否是已知的judge模型
+                    # Check if remaining part is a known judge model
                     remaining_parts = [p for p in remaining.split('_') if p]
                     if any(part in judge_models for part in remaining_parts):
                         return pattern
             
-            # 通用解析：分割并智能识别被评判模型
+            # Generic parsing: split and intelligently identify model being judged
             parts = name_part.split('_')
             if len(parts) >= 2:
-                # 尝试识别最后一部分是否为judge模型
+                # Try to identify if last part is judge model
                 last_part = parts[-1]
                 if last_part in judge_models:
-                    # 最后一部分是judge模型，前面的是被评判模型
+                    # Last part is judge model, previous part is model being judged
                     model_name = '_'.join(parts[:-1])
                     return model_name
                 else:
-                    # 无法确定，使用原有逻辑
+                    # Cannot determine, use original logic
                     model_name = '_'.join(parts[:-1])
                     return model_name
             elif len(parts) == 1:
@@ -190,57 +203,57 @@ class ModelManager:
             # 格式: judge_test_first_{model}_{judge}.jsonl
             name_part = base_name[11:]  # 移除 'judge_test_' 前缀
             
-            # 移除常见后缀模式
+            # Remove common suffix patterns
             for suffix in ['_gpt41', '_gpt5mini']:
                 if name_part.endswith(suffix):
                     name_part = name_part[:-len(suffix)]
                     break
             
-            # 在剩余部分中查找已知模型名
+            # Find known model names in remaining part
             for pattern in ['gpt41', 'gpt5', 'claude4', 'deepseekv3', 'deepseekr1', 
                            'o1', 'o3', 'gemini25pro', 'o4_mini_dr', 'AFM_sft', 'AFM_rl']:
                 if pattern in name_part:
                     return pattern
         
-        # 如果以上都不匹配，返回处理后的基础名称
+        # If none of the above match, return processed base name
         return base_name
     
     def get_display_name(self, model_name: str) -> str:
         """
-        获取模型的显示名称
+        获取Model的显示名称
         """
         if not model_name:
             return model_name
             
-        # 先检查预定义模型
+        # First check predefined models
         if model_name in self.PREDEFINED_MODELS:
             return self.PREDEFINED_MODELS[model_name]['display_name']
         
-        # 检查已发现的模型
+        # Check already discovered models
         if model_name in self.discovered_models:
             return self.discovered_models[model_name]['display_name']
         
-        # 为新模型生成显示名称
+        # Generate display name for new model
         display_name = self._generate_display_name(model_name)
         
-        # 记录新发现的模型（中等优先级）
+        # Record newly discovered model (medium priority)
         self.discovered_models[model_name] = {
             'display_name': display_name,
-            'priority': 50  # 新模型默认中等优先级
+            'priority': 50  # New models default to medium priority
         }
         
-        print(f"🆕 发现新模型: {model_name} -> {display_name}")
+        print(f"🆕 Discovered new model: {model_name} -> {display_name}")
         
         return display_name
     
     def _generate_display_name(self, model_name: str) -> str:
         """
-        为新模型智能生成显示名称
+        Intelligently generate display name for new model
         """
-        # 简单清理和格式化
+        # Simple cleaning and formatting
         display_name = model_name.replace('_', '.')
         
-        # 处理常见模式
+        # Handle common patterns
         patterns = [
             (r'gpt(\d+)', r'gpt\1'),
             (r'claude(\d+)', r'claude\1'),  
@@ -256,25 +269,25 @@ class ModelManager:
     
     def get_priority(self, model_name: str) -> int:
         """
-        获取模型的排序优先级
+        Get model's sorting priority
         """
         if model_name in self.PREDEFINED_MODELS:
             return self.PREDEFINED_MODELS[model_name]['priority']
         elif model_name in self.discovered_models:
             return self.discovered_models[model_name]['priority']
         else:
-            # 未知模型默认最低优先级
+            # Unknown models default to lowest priority
             return 0
     
     def get_sorted_models(self, available_models: Set[str]) -> List[Tuple[str, str]]:
         """
-        获取排序后的模型列表：(model_name, display_name)
+        Get sorted model list: (model_name, display_name)
         """
-        # 确保所有模型都有显示名称
+        # Ensure all models have display names
         for model in available_models:
-            self.get_display_name(model)  # 这会自动注册新模型
+            self.get_display_name(model)  # This will automatically register new models
         
-        # 按优先级排序，优先级相同则按名称排序
+        # Sort by priority, then by name if priority is the same
         sorted_models = sorted(
             available_models,
             key=lambda x: (-self.get_priority(x), x)
@@ -283,13 +296,13 @@ class ModelManager:
         return [(model, self.get_display_name(model)) for model in sorted_models]
 
 
-# 全局模型管理器实例
+# Global model manager instance
 model_manager = ModelManager()
 
 
 # ========== Bench query -> num_checklist mapping ==========
 _GLOBAL_BENCH_MAP = None
-_GLOBAL_BENCH_DATA = None  # 存储完整的bench数据，用于字段匹配
+_GLOBAL_BENCH_DATA = None  # Store complete bench data for field matching
 
 
 def _normalize_query(q: str) -> str:
@@ -331,7 +344,7 @@ def _get_bench_map() -> Dict[str, int]:
 
 
 def _load_bench_data(default_path: str = 'data/raw/bench_50.jsonl') -> Dict[str, dict]:
-    """加载完整的bench数据，用于字段匹配"""
+    """Load complete bench data for field matching"""
     bench_data: Dict[str, dict] = {}
     try:
         if not os.path.exists(default_path):
@@ -344,7 +357,7 @@ def _load_bench_data(default_path: str = 'data/raw/bench_50.jsonl') -> Dict[str,
                     obj = json.loads(line)
                     query = obj.get('query', '').strip()
                     if query:
-                        # 使用原始query作为key进行精确匹配
+                        # Use original query as key for exact matching
                         bench_data[query] = obj
                 except Exception:
                     continue
@@ -361,7 +374,7 @@ def _get_bench_data() -> Dict[str, dict]:
 
 
 def get_category_from_bench(query: str) -> str:
-    """从bench_50.jsonl中根据query匹配获取category"""
+    """Get category from bench_50.jsonl by matching query"""
     bench_data = _get_bench_data()
     if query in bench_data:
         return bench_data[query].get('category', '')
@@ -370,26 +383,26 @@ def get_category_from_bench(query: str) -> str:
 
 def smart_categorize(data: dict) -> str:
     """
-    当category为null时，首先尝试从bench_50.jsonl匹配，然后智能识别类别
+    When category is null, first try to match from bench_50.jsonl, then intelligently identify category
     
     Args:
-        data: 包含query等字段的数据字典
+        data: Data dictionary containing query and other fields
         
     Returns:
-        识别出的类别名称，如果无法识别则返回'Unknown'
+        Identified category name, returns 'Unknown' if unable to identify
     """
-    # 首先尝试从 bench_50.jsonl 匹配
+    # First try to match from bench_50.jsonl
     query = data.get('query', '')
     if query:
         bench_category = get_category_from_bench(query.strip())
         if bench_category:
             return bench_category
     
-    # 如果无法从bench_50.jsonl匹配，则使用智能识别
+    # If unable to match from bench_50.jsonl, use intelligent identification
     query_lower = query.lower()
     sheet_name = data.get('sheet_name', '').lower()
     
-    # 数学关键词
+    # Math keywords
     math_keywords = [
         'hilbert', 'samuel', 'multiplicity', 'cohen', 'macaulay', 'rings', 
         'characteristic', 'frobenius', 'gorenstein', 'algebra', 'algebraic',
@@ -399,32 +412,32 @@ def smart_categorize(data: dict) -> str:
         'motzkin', 'fibonacci', 'probability', 'stochastic', 'quantum', 'optimization'
     ]
     
-    # 计算机科学关键词
+    # Computer Science keywords
     cs_keywords = [
         'algorithm', 'data structure', 'programming', 'software', 'computer',
         'machine learning', 'artificial intelligence', 'neural network',
         'database', 'network', 'security', 'cryptography', 'blockchain'
     ]
     
-    # 哲学关键词
+    # Philosophy keywords
     philosophy_keywords = [
         'philosophy', 'philosophical', 'ethics', 'moral', 'ontology',
         'epistemology', 'metaphysics', 'logic', 'phenomenology'
     ]
     
-    # 法学关键词
+    # Law keywords
     law_keywords = [
         'law', 'legal', 'court', 'justice', 'rights', 'constitution',
         'legislation', 'jurisprudence', 'contract', 'tort'
     ]
     
-    # 经济学关键词
+    # Economics keywords
     economics_keywords = [
         'economic', 'economics', 'market', 'trade', 'finance', 'fiscal',
         'monetary', 'GDP', 'inflation', 'supply', 'demand'
     ]
     
-    # 检查各类别关键词
+    # Check keywords for each category
     if any(keyword in query_lower for keyword in math_keywords):
         return 'Math'
     elif any(keyword in query_lower for keyword in cs_keywords):
@@ -436,7 +449,7 @@ def smart_categorize(data: dict) -> str:
     elif any(keyword in query_lower for keyword in economics_keywords):
         return 'economics'
     
-    # 如果sheet_name包含学科信息，也可以作为参考
+    # If sheet_name contains discipline information, can also be used as reference
     if 'math' in sheet_name:
         return 'Math'
     elif 'computer' in sheet_name or 'cs' in sheet_name:
@@ -453,20 +466,20 @@ def smart_categorize(data: dict) -> str:
 
 def parse_score_ratio(score_str: str) -> Tuple[float, float]:
     """
-    解析分数比例字符串，如 "1/2" -> (1.0, 2.0)
+    Parse score ratio string, e.g. "1/2" -> (1.0, 2.0)
     
     Args:
-        score_str: 分数字符串，格式为 "分子/分母"
+        score_str: Score string, format "numerator/denominator"
         
     Returns:
-        (分子, 分母) 的元组
+        Tuple of (numerator, denominator)
     """
     try:
         if '/' in score_str:
             numerator, denominator = score_str.split('/')
             return float(numerator), float(denominator)
         else:
-            # 如果没有分母，默认分母为1
+            # If no denominator, default denominator is 1
             return float(score_str), 1.0
     except (ValueError, AttributeError):
         return 0.0, 1.0
@@ -476,18 +489,18 @@ def parse_score_ratio(score_str: str) -> Tuple[float, float]:
 
 def calculate_scores_for_file(jsonl_file: str) -> Dict:
     """
-    计算单个jsonl文件中所有数据的分数统计，按category分类
+    Calculate score statistics for all data in a single jsonl file, classified by category
     
     Args:
-        jsonl_file: 输入的jsonl文件路径
+        jsonl_file: Input jsonl file path
         
     Returns:
-        包含分类计算结果的字典
+        Dictionary containing classification calculation results
     """
     if not os.path.exists(jsonl_file):
-        raise FileNotFoundError(f"文件不存在: {jsonl_file}")
+        raise FileNotFoundError(f"File does not exist: {jsonl_file}")
     
-    # 分类统计 - 使用defaultdict自动创建嵌套字典
+    # Category statistics - use defaultdict to automatically create nested dict
     category_stats = defaultdict(lambda: {
         'count': 0,
         'aspect1_score': 0.0,
@@ -496,65 +509,65 @@ def calculate_scores_for_file(jsonl_file: str) -> Dict:
         'num_checklist': 0
     })
     
-    print(f"正在处理文件: {jsonl_file}")
+    print(f"Processing file: {jsonl_file}")
     
     with open(jsonl_file, 'r', encoding='utf-8') as f:
         for line_num, line in enumerate(f, 1):
             try:
                 data = json.loads(line.strip())
                 
-                # 检查是否有scores字段
+                # Check if scores field exists
                 if 'scores' not in data:
-                    print(f"警告: 文件{jsonl_file}第{line_num}行缺少scores字段，跳过")
+                    print(f"Warning: file{jsonl_file}第{line_num}line missing scores field, skipping")
                     continue
                 
                 scores = data['scores']
                 
-                # 解析aspect1分数（将多分制折算为1分制：分子>0 记1分，否则0分）
+                # Parse aspect1 score (convert multi-point scale to 1-point: numerator>0 counts as 1, else 0)
                 aspect1_str = scores.get('aspect1', '0/1')
                 aspect1_score, aspect1_max = parse_score_ratio(aspect1_str)
-                # 折算为通过/未通过
+                # Convert to pass/fail
                 aspect1_raw_score = 1.0 if aspect1_score > 0 else 0.0
                 aspect1_max = 1.0
                 
-                # 解析aspect2分数
+                # Parse aspect2 score
                 aspect2_str = scores.get('aspect2', '0/1')
                 aspect2_score, aspect2_max = parse_score_ratio(aspect2_str)
                 
-                # 获取num_checklist：优先用scores.num_checklist；
-                # 若缺失，再从bench_50.jsonl按query匹配获取；仍缺失再兜底用aspect2分母
+                # Get num_checklist: prioritize scores.num_checklist;
+                # if missing, match from bench_50.jsonl by query; fallback to aspect2 denominator if still missing
                 num_checklist = scores.get('num_checklist', None)
                 if not isinstance(num_checklist, (int, float)) or num_checklist <= 0:
-                    # bench查找
+                    # bench lookup
                     bench_map = _get_bench_map()
                     q = data.get('query') or data.get('original_query') or ''
                     num_checklist = bench_map.get(q) or bench_map.get(_normalize_query(q))
                 if not isinstance(num_checklist, (int, float)) or num_checklist <= 0:
                     num_checklist = aspect2_max
                 
-                # 获取category（从原始数据中）
+                # Get category (from raw data)
                 category = data.get('category', 'Unknown')
-                # 如果category为None或空字符串，先尝试从bench匹配，再智能识别类别
+                # If category is None or empty, first try to match from bench, then intelligently identify category
                 if category is None or category == '':
-                    # 尝试从 bench_50.jsonl 匹配获取完整字段信息
+                    # Try to match and get complete field info from bench_50.jsonl
                     query = data.get('query', '')
                     if query:
                         bench_data = _get_bench_data()
                         matched_data = bench_data.get(query.strip())
                         if matched_data:
-                            # 成功匹配到bench数据，使用其category
+                            # Successfully matched bench data, use its category
                             category = matched_data.get('category', 'Unknown')
-                            print(f"✅ 已从bench_50.jsonl匹配补充category: {category}，query: {query[:50]}...")
+                            print(f"✅ Matched and supplemented category from bench_50.jsonl: {category}，query: {query[:50]}...")
                         else:
-                            # 无法匹配，使用智能识别
+                            # Unable to match, use intelligent identification
                             category = smart_categorize(data)
                             if category == 'Unknown':
-                                print(f"警告: 文件{jsonl_file}第{line_num}行category为null且无法自动识别，设为Unknown")
-                                print(f"      内容预览: {data.get('query', '')[:100]}...")
+                                print(f"Warning: file{jsonl_file}第{line_num}line category is null and cannot be auto-identified, set to Unknown")
+                                print(f"      Content preview: {data.get('query', '')[:100]}...")
                     else:
                         category = 'Unknown'
                 
-                # 分类统计
+                # Category statistics
                 category_stats[category]['count'] += 1
                 category_stats[category]['aspect1_score'] += aspect1_raw_score
                 category_stats[category]['aspect1_denominator'] += aspect1_max
@@ -562,16 +575,16 @@ def calculate_scores_for_file(jsonl_file: str) -> Dict:
                 category_stats[category]['num_checklist'] += num_checklist
                 
             except json.JSONDecodeError as e:
-                print(f"警告: 文件{jsonl_file}第{line_num}行JSON解析错误，跳过: {e}")
+                print(f"Warning: file{jsonl_file}第{line_num}line JSON parsing error, skipping: {e}")
                 continue
             except Exception as e:
-                print(f"警告: 文件{jsonl_file}第{line_num}行处理错误，跳过: {e}")
+                print(f"Warning: file{jsonl_file}第{line_num}line processing error, skipping: {e}")
                 continue
     
-    # 计算各类别结果
+    # Calculate category results
     category_results = {}
     for category, stats in category_stats.items():
-        if stats['count'] > 0:  # 只计算有数据的类别
+        if stats['count'] > 0:  # Only calculate categories with data
             category_results[category] = calculate_category_scores(
                 stats['count'], 
                 stats['aspect1_score'], 
@@ -585,25 +598,25 @@ def calculate_scores_for_file(jsonl_file: str) -> Dict:
 
 def calculate_category_scores(data_count: int, aspect1_score: float, aspect1_denominator: float, aspect2_score: float, num_checklist: int) -> Dict:
     """
-    计算单个类别的分数
+    Calculate scores for a single category
     
     Args:
-        data_count: 数据条数
-        aspect1_score: aspect1分子累计得分（不归一化，只取分子）
-        aspect1_denominator: aspect1的分母累计（通常为题目数量）
-        aspect2_score: aspect2总分
-        num_checklist: checklist总数
+        data_count: data count
+        aspect1_score: aspect1 numerator cumulative score (not normalized, only take numerator)
+        aspect1_denominator: aspect1 denominator cumulative (usually number of questions)
+        aspect2_score: aspect2 total score
+        num_checklist: total checklist count
         
     Returns:
-        计算结果字典
+        calculation result dictionary
     """
-    # aspect1总分 = 分子得分和 / 题目数量（每题满分1分）
+    # aspect1 total score = sum of numerator scores / number of questions (each question max 1 point)
     aspect1_total = aspect1_score / aspect1_denominator if aspect1_denominator > 0 else 0
 
-    # aspect2总分 = 得分/sum(num_checklist)
+    # aspect2 total score = 得分/sum(num_checklist)
     aspect2_total = aspect2_score / num_checklist if num_checklist > 0 else 0
     
-    # 总分 = (aspect1原始总分 + aspect2原始总分) / (总checklist数量 + aspect1分母累计)
+    # total score = (aspect1 raw total + aspect2 raw total) / (total checklist count + aspect1 denominator cumulative)
     denominator = num_checklist + aspect1_denominator
     final_total = (aspect1_score + aspect2_score) / denominator if denominator > 0 else 0
     
@@ -626,14 +639,14 @@ def calculate_category_scores(data_count: int, aspect1_score: float, aspect1_den
 
 def check_data_completeness(category_results: Dict, expected_count_per_category: int = 50) -> Dict:
     """
-    检查数据完整性，确保每个category都有预期的数据条数
+    Check data completeness，确保每个category都有预期的data count
     
     Args:
-        category_results: 各category的计算结果
-        expected_count_per_category: 每个category预期的数据条数
+        category_results: Calculation results for each category
+        expected_count_per_category: 每个category预期的data count
         
     Returns:
-        包含完整性检查结果的字典
+        Dictionary containing completeness check results
     """
     completeness_info = {
         'is_complete': True,
@@ -668,25 +681,25 @@ def check_data_completeness(category_results: Dict, expected_count_per_category:
 
 def calculate_overall_aspect1_aspect2_from_categories(category_results: Dict) -> Tuple[float, float]:
     """
-    计算Overall的aspect1和aspect2百分比（基于所有category的加权平均）
+    Calculate Overall aspect1 and aspect2 percentages (based on weighted average of all categories)
     
     Args:
-        category_results: 各category的计算结果
+        category_results: Calculation results for each category
         
     Returns:
-        (aspect1_percentage, aspect2_percentage) 的元组
+        (aspect1_percentage, aspect2_percentage) tuple
     """
     if not category_results:
         return 0.0, 0.0
     
-    # 累计各category的原始分数和分母
+    # Accumulate raw scores and denominators for each category
     total_aspect1_score = 0.0
     total_aspect1_denominator = 0.0
     total_aspect2_score = 0.0
     total_aspect2_denominator = 0.0
     
     for category, result in category_results.items():
-        # 跳过非category数据（如completeness、overall_score等）
+        # Skip non-category data (like completeness, overall_score, etc.)
         if not isinstance(result, dict) or 'raw_scores' not in result:
             continue
             
@@ -694,16 +707,16 @@ def calculate_overall_aspect1_aspect2_from_categories(category_results: Dict) ->
         data_count = result['data_count']
         num_checklist = result['num_checklist']
         
-        # aspect1累计（使用记录的分母；兼容旧结果）
+        # aspect1 accumulation (use recorded denominator; compatible with old results)
         total_aspect1_score += raw_scores['aspect1_score']
-        aspect1_denominator = raw_scores.get('aspect1_denominator', data_count)  # 兼容旧数据
+        aspect1_denominator = raw_scores.get('aspect1_denominator', data_count)  # Compatible with old data
         total_aspect1_denominator += aspect1_denominator
         
-        # aspect2累计
+        # aspect2 accumulation
         total_aspect2_score += raw_scores['aspect2_score']
-        total_aspect2_denominator += num_checklist  # aspect2满分为checklist总数
+        total_aspect2_denominator += num_checklist  # aspect2满分为total checklist count
     
-    # 计算百分比
+    # Calculate percentage
     aspect1_percentage = (total_aspect1_score / total_aspect1_denominator * 100) if total_aspect1_denominator > 0 else 0.0
     aspect2_percentage = (total_aspect2_score / total_aspect2_denominator * 100) if total_aspect2_denominator > 0 else 0.0
     
@@ -712,13 +725,13 @@ def calculate_overall_aspect1_aspect2_from_categories(category_results: Dict) ->
 
 def calculate_overall_score_from_categories(category_results: Dict) -> float:
     """
-    计算Overall总分（基于所有category的加权平均）
+    Calculate Overall total score (based on weighted average of all categories)
     
     Args:
-        category_results: 各category的计算结果
+        category_results: Calculation results for each category
         
     Returns:
-        Overall总分百分比
+        Overall total score percentage
     """
     if not category_results:
         return 0.0
@@ -731,39 +744,39 @@ def calculate_overall_score_from_categories(category_results: Dict) -> float:
         data_count = result['data_count']
         num_checklist = result['num_checklist']
         
-        # 累加原始分数和分母
+        # Accumulate raw scores and denominators
         total_raw_score += raw_scores['aspect1_score'] + raw_scores['aspect2_score']
-        aspect1_denominator = raw_scores.get('aspect1_denominator', data_count)  # 兼容旧数据
+        aspect1_denominator = raw_scores.get('aspect1_denominator', data_count)  # Compatible with old data
         total_denominator += num_checklist + aspect1_denominator
     
-    # 计算总体得分
+    # Calculate overall score
     overall_score = (total_raw_score / total_denominator * 100) if total_denominator > 0 else 0.0
     return overall_score
 
 
 def process_hints_folder(hints_folder: str, expected_count: int = 50) -> Dict[str, Dict]:
     """
-    处理单个hints文件夹中的所有judged_{model_name}_{judge_model}.jsonl文件
+    Process all judged_{model_name}_{judge_model}.jsonl files in a single hints folder
     
     Args:
-        hints_folder: hints文件夹路径 (如 infer_40_hints0)
+        hints_folder: hints folder path (如 infer_40_hints0)
         
     Returns:
-        {model_name: {category: result_dict, 'overall': overall_score}} 的字典
+        {model_name: {category: result_dict, 'overall': overall_score}} dictionary
     """
     if not os.path.exists(hints_folder):
-        raise FileNotFoundError(f"文件夹不存在: {hints_folder}")
+        raise FileNotFoundError(f"Folder does not exist: {hints_folder}")
     
-    # 查找所有符合条件的文件（支持任何judge模型）
+    # Find all matching files (support any judge model)
     pattern = os.path.join(hints_folder, "judged_*.jsonl")
     files = glob.glob(pattern)
     
     if not files:
-        print(f"警告: 在文件夹 {hints_folder} 中未找到符合 judged_*.jsonl 格式的文件")
+        print(f"Warning: in folder {hints_folder} no files matching judged_*.jsonl format found")
         return {}
     
-    print(f"\n处理文件夹: {hints_folder}")
-    print(f"找到 {len(files)} 个文件:")
+    print(f"\nProcessing folder: {hints_folder}")
+    print(f"Found {len(files)} files:")
     for f in files:
         print(f"  - {os.path.basename(f)}")
     
@@ -771,17 +784,17 @@ def process_hints_folder(hints_folder: str, expected_count: int = 50) -> Dict[st
     
     for file_path in files:
         filename = os.path.basename(file_path)
-        # 使用全局模型管理器提取模型名称
+        # Use global model manager to extract model name
         model_name = model_manager.extract_model_name(filename)
         
         try:
             category_results = calculate_scores_for_file(file_path)
             overall_score = calculate_overall_score_from_categories(category_results)
             
-            # 计算Overall的aspect1/aspect2百分比（与主实验保持一致）
+            # Calculate Overall aspect1/aspect2 percentages (consistent with main experiment)
             overall_aspect1, overall_aspect2 = calculate_overall_aspect1_aspect2_from_categories(category_results)
             
-            # 检查数据完整性
+            # Check data completeness
             completeness_info = check_data_completeness(category_results, expected_count)
             
             results[model_name] = category_results.copy()
@@ -790,7 +803,7 @@ def process_hints_folder(hints_folder: str, expected_count: int = 50) -> Dict[st
             results[model_name]['overall_aspect2_percentage'] = overall_aspect2
             results[model_name]['completeness'] = completeness_info
             
-            # 收集完整性问题到全局列表
+            # Collect completeness issues to global list
             if not completeness_info['is_complete']:
                 all_completeness_issues.append({
                     'folder': hints_folder,
@@ -800,41 +813,41 @@ def process_hints_folder(hints_folder: str, expected_count: int = 50) -> Dict[st
                     'category_count': len(category_results)
                 })
             
-            # 只显示处理完成信息，不显示完整性问题（留到最后统一显示）
+            # Only show processing completion info, don't show completeness issues (leave for final display)
             status_icon = "✓" if completeness_info['is_complete'] else "⚠️"
-            print(f"{status_icon} {model_name}: 处理完成，找到 {len(category_results)} 个category，总分: {overall_score:.1f}%")
+            print(f"{status_icon} {model_name}: 处理完成，Found {len(category_results)} categories, total score: {overall_score:.1f}%")
             
         except Exception as e:
-            print(f"✗ {model_name}: 处理失败 - {e}")
+            print(f"✗ {model_name}: Processing failed - {e}")
             continue
     
     return results
 
 
-# 删除了自动发现功能，现在使用固定的文件夹定义
+# Removed automatic discovery feature, now using fixed folder definitions
 
 
 def process_all_hints_experiments(base_path: str, expected_count: int = 50) -> Dict[str, Dict[str, Dict]]:
     """
-    处理所有hints实验文件夹
+    Process all hints experiment folders
     
     Args:
-        base_path: 包含所有hints文件夹的基础路径
-        expected_count: 每个category期望的数据条数
+        base_path: Base path containing all hints folders
+        expected_count: 每个category期望的data count
         
     Returns:
-        {hints_folder: {model_name: results}} 的嵌套字典
+        {hints_folder: {model_name: results}} nested dictionary
     """
-    # 固定定义的hints文件夹
+    # Fixed defined hints folders
     hints_folders = [
-        'judge_infer_50_hints0',  # 无hint
+        'judge_infer_50_hints0',  # No hint
         'judge_infer_50_hints1',  # Hint1
         'judge_infer_50_hints2',  # Hint2
         'judge_infer_50_hints3',  # Hint3
         'judge_infer_50_hints4'   # Hint1+Hint2+Hint3
     ]
     
-    print(f"处理指定的hints实验文件夹: {hints_folders}")
+    print(f"Processing specified hints experiment folders: {hints_folders}")
     
     all_results = {}
     
@@ -847,43 +860,43 @@ def process_all_hints_experiments(base_path: str, expected_count: int = 50) -> D
                 if folder_results:
                     all_results[hints_folder] = folder_results
                 else:
-                    print(f"警告: {hints_folder} 文件夹中没有有效数据")
+                    print(f"警告: {hints_folder} folder has no valid data")
             except Exception as e:
-                print(f"错误: 处理 {hints_folder} 失败 - {e}")
+                print(f"Error: processing {hints_folder} failed - {e}")
         else:
-            print(f"警告: 文件夹 {folder_path} 不存在，跳过")
+            print(f"Warning: file夹 {folder_path} does not exist, skipping")
     
     return all_results
 
 
 def process_main_experiment(base_path: str, expected_count: int = 50) -> Dict[str, Dict]:
     """
-    处理主实验数据（自动寻找hints0文件夹的数据，按category显示）
+    处理主Experiment数据（自动寻找hints0folder的数据，按category显示）
     
     Args:
-        base_path: 包含实验文件夹的基础路径
-        expected_count: 每个category期望的数据条数
+        base_path: 包含Experimentfolder的基础路径
+        expected_count: 每个category期望的data count
         
     Returns:
-        {model_name: {category: result_dict}} 的字典
+        {model_name: {category: result_dict}} dictionary
     """
-    # 使用固定的hints0文件夹作为主实验数据源
+    # 使用固定的hints0folder作为主Experiment数据源
     hints0_folder = os.path.join(base_path, "judge_infer_50_hints0")
     
     if not os.path.exists(hints0_folder):
-        print(f"警告: 主实验数据源文件夹 {hints0_folder} 不存在")
+        print(f"警告: 主Experiment数据源folder {hints0_folder} 不存在")
         return {}
     
-    # 查找所有符合条件的文件（支持任何judge模型）
+    # Find all matching files (support any judge model)
     pattern = os.path.join(hints0_folder, "judged_*.jsonl")
     files = glob.glob(pattern)
     
     if not files:
-        print(f"警告: 在文件夹 {hints0_folder} 中未找到主实验文件")
+        print(f"Warning: in folder {hints0_folder} 中未Found主Experiment文件")
         return {}
     
-    print(f"\n📊 处理主实验数据（基于hints0数据）:")
-    print(f"找到 {len(files)} 个主实验文件:")
+    print(f"\n📊 Processing main experiment data (based on hints0 data):")
+    print(f"Found {len(files)} main experiment files:")
     for f in files:
         print(f"  - {os.path.basename(f)}")
     
@@ -891,19 +904,19 @@ def process_main_experiment(base_path: str, expected_count: int = 50) -> Dict[st
     
     for file_path in files:
         filename = os.path.basename(file_path)
-        # 使用全局模型管理器提取模型名称
+        # Use global model manager to extract model name
         model_name = model_manager.extract_model_name(filename)
         
         try:
             category_results = calculate_scores_for_file(file_path)
             
-            # 检查数据完整性
+            # Check data completeness
             completeness_info = check_data_completeness(category_results, expected_count)
             
-            # 计算Overall分数
+            # Calculate Overall score
             overall_score = calculate_overall_score_from_categories(category_results)
             
-            # 计算Overall的aspect1/aspect2百分比
+            # Calculate Overall aspect1/aspect2 percentages
             overall_aspect1, overall_aspect2 = calculate_overall_aspect1_aspect2_from_categories(category_results)
             
             results[model_name] = category_results.copy()
@@ -912,7 +925,7 @@ def process_main_experiment(base_path: str, expected_count: int = 50) -> Dict[st
             results[model_name]['overall_aspect1_percentage'] = overall_aspect1
             results[model_name]['overall_aspect2_percentage'] = overall_aspect2
             
-            # 收集完整性问题到全局列表
+            # Collect completeness issues to global list
             if not completeness_info['is_complete']:
                 all_completeness_issues.append({
                     'folder': 'main_experiment',
@@ -922,12 +935,12 @@ def process_main_experiment(base_path: str, expected_count: int = 50) -> Dict[st
                     'category_count': len(category_results)
                 })
             
-            # 只显示处理完成信息
+            # Only show processing completion info
             status_icon = "✓" if completeness_info['is_complete'] else "⚠️"
-            print(f"{status_icon} {model_name}: 处理完成，找到 {len(category_results)} 个category，Overall: {overall_score:.1f}%")
+            print(f"{status_icon} {model_name}: 处理完成，Found {len(category_results)} categories, Overall: {overall_score:.1f}%")
             
         except Exception as e:
-            print(f"✗ {model_name}: 处理失败 - {e}")
+            print(f"✗ {model_name}: Processing failed - {e}")
             continue
     
     return results
@@ -935,37 +948,37 @@ def process_main_experiment(base_path: str, expected_count: int = 50) -> Dict[st
 
 def map_category_to_column(category: str) -> str:
     """
-    将category映射到Excel列名
+    Map category to Excel column name
     """
     category_mapping = {
         'philosophy': 'Phi',
         'Computer Science': 'CS', 
         'Law': 'Law',
         'economics': 'Econ',
-        # 可以根据需要添加更多映射
+        # Can add more mappings as needed
     }
     return category_mapping.get(category, category)
 
 
 def create_comprehensive_excel(all_results: Dict, output_file: str):
     """
-    创建包含主实验和消融实验两个sheet的Excel文件
+    Create Excel file containing both main and ablation experiment sheets
     
     Args:
-        all_results: 包含主实验和消融实验的所有结果数据
-        output_file: 输出Excel文件路径
+        all_results: All results data for main and ablation experiments
+        output_file: Output Excel file path
     """
-    # 自动创建目录（如果不存在）
+    # Automatically create directory (if not exists)
     output_dir = os.path.dirname(output_file)
     if output_dir and not os.path.exists(output_dir):
         os.makedirs(output_dir, exist_ok=True)
-        print(f"创建目录: {output_dir}")
+        print(f"Create directory: {output_dir}")
     
-    # 分离主实验和消融实验数据
+    # Separate main and ablation experiment data
     ablation_results = {}
     main_results = {}
     
-    # 定义消融实验的文件夹名称
+    # 定义消融Experiment的folder名称
     ablation_folders = {
         'judge_infer_50_hints0',
         'judge_infer_50_hints1', 
@@ -978,61 +991,61 @@ def create_comprehensive_excel(all_results: Dict, output_file: str):
         if key in ablation_folders:
             ablation_results[key] = value
         else:
-            # 主实验数据（模型名称为key）
+            # Main experiment data (model name as key)
             main_results[key] = value
     
-    # 创建工作簿
+    # Create workbook
     wb = Workbook()
     
-    # 删除默认的Sheet
+    # Remove default Sheet
     wb.remove(wb.active)
     
-    # === 创建主实验sheet ===
+    # === Create main experiment sheet ===
     main_ws = wb.create_sheet("main")
     
     if main_results:
-        # 收集所有出现的category并排序
+        # Collect all appearing categories and sort
         all_categories = set()
         for model_results in main_results.values():
-            # 只包含真正的category，排除特殊字段
+            # Only include real categories, exclude special fields
             for key, value in model_results.items():
-                # 确保这是一个真正的category结果，不是特殊字段，且key不为None
+                # Ensure this is a real category result, not a special field, and key is not None
                 if (key is not None and 
                     key not in ['completeness', 'overall_score', 'overall_aspect1_percentage', 'overall_aspect2_percentage'] and
                     isinstance(value, dict) and 'calculated_scores' in value):
                     all_categories.add(key)
         
-        # 映射category到列名并排序
+        # Map category to column name and sort
         column_mapping = {cat: map_category_to_column(cat) for cat in all_categories}
-        # 过滤掉None值，防止排序错误
+        # Filter out None values to prevent sorting errors
         valid_columns = [col for col in column_mapping.values() if col is not None]
         columns = ['Overall'] + sorted(set(valid_columns))
         
-        print(f"主实验发现的categories: {sorted(all_categories)}")
-        print(f"主实验Excel列: {columns}")
+        print(f"Categories found in main experiment: {sorted(all_categories)}")
+        print(f"Main experiment Excel columns: {columns}")
         
-        # 设置表头
+        # Set headers
         headers = ['Model'] + columns
         for col_idx, header in enumerate(headers, 1):
             cell = main_ws.cell(row=1, column=col_idx, value=header)
             cell.font = Font(bold=True)
             cell.alignment = Alignment(horizontal='center')
         
-        # 使用模型管理器自动排序模型
+        # Use model manager to automatically sort models
         available_model_names = set(main_results.keys())
         available_models = model_manager.get_sorted_models(available_model_names)
         
-        print(f"主实验指定的模型（按顺序）: {[display_name for _, display_name in available_models]}")
+        print(f"Models specified for main experiment (in order): {[display_name for _, display_name in available_models]}")
         
-        # 填充数据
+        # Fill data
         row_idx = 2
         for file_name, display_name in available_models:
             model_results = main_results[file_name]
             
-            # 模型名称
+            # Model name
             main_ws.cell(row=row_idx, column=1, value=display_name)
             
-            # Overall列：显示aspect1/aspect2格式
+            # Overallcolumn: display aspect1/aspect2 format
             if 'overall_aspect1_percentage' in model_results and 'overall_aspect2_percentage' in model_results:
                 aspect1_pct = model_results['overall_aspect1_percentage']
                 aspect2_pct = model_results['overall_aspect2_percentage']
@@ -1040,9 +1053,9 @@ def create_comprehensive_excel(all_results: Dict, output_file: str):
             else:
                 main_ws.cell(row=row_idx, column=2, value="")
             
-            # 填充各category的数据
-            for col_idx, col_name in enumerate(columns[1:], 3):  # 从第3列开始（跳过Overall）
-                # 查找对应的category
+            # Fill data for each category
+            for col_idx, col_name in enumerate(columns[1:], 3):  # Start from column 3 (skip Overall)
+                # Find corresponding category
                 matching_category = None
                 for category, mapped_name in column_mapping.items():
                     if mapped_name == col_name:
@@ -1051,7 +1064,7 @@ def create_comprehensive_excel(all_results: Dict, output_file: str):
                 
                 if matching_category and matching_category in model_results:
                     result = model_results[matching_category]
-                    # 确保这是一个真正的category结果，有formatted_score字段
+                    # Ensure this is a real category result with formatted_score field
                     if isinstance(result, dict) and 'formatted_score' in result:
                         formatted_score = result['formatted_score']
                         main_ws.cell(row=row_idx, column=col_idx, value=formatted_score)
@@ -1062,7 +1075,7 @@ def create_comprehensive_excel(all_results: Dict, output_file: str):
             
             row_idx += 1
         
-        # 设置列宽
+        # Set column width
         for col in main_ws.columns:
             max_length = 0
             column = col[0].column_letter
@@ -1075,12 +1088,12 @@ def create_comprehensive_excel(all_results: Dict, output_file: str):
             adjusted_width = min(max_length + 2, 20)
             main_ws.column_dimensions[column].width = adjusted_width
     
-    # === 为每个hints条件创建与主实验相同结构的sheet ===
+    # === Create sheets with same structure as main experiment for each hints condition ===
     if ablation_results:
-        # 动态命名函数
+        # Dynamic naming function
         def sheet_title_for_folder(folder_name: str) -> str:
             if 'hints0' in folder_name:
-                return '无hint'
+                return 'No hint'
             elif 'hints1' in folder_name:
                 return 'Hint1'
             elif 'hints2' in folder_name:
@@ -1098,7 +1111,7 @@ def create_comprehensive_excel(all_results: Dict, output_file: str):
             ws = wb.create_sheet(title)
 
             if folder_results:
-                # 收集所有出现的category
+                # Collect all appearing categories
                 all_categories = set()
                 for model_results in folder_results.values():
                     for key, value in model_results.items():
@@ -1113,18 +1126,18 @@ def create_comprehensive_excel(all_results: Dict, output_file: str):
                 valid_columns = [col for col in column_mapping.values() if col is not None]
                 columns = ['Overall'] + sorted(set(valid_columns))
 
-                # 表头
+                # Headers
                 headers = ['Model'] + columns
                 for col_idx, header in enumerate(headers, 1):
                     cell = ws.cell(row=1, column=col_idx, value=header)
                     cell.font = Font(bold=True)
                     cell.alignment = Alignment(horizontal='center')
 
-                # 使用模型管理器自动排序模型
+                # Use model manager to automatically sort models
                 available_model_names = set(folder_results.keys())
                 available_models = model_manager.get_sorted_models(available_model_names)
 
-                # 填充数据
+                # Fill data
                 row_idx = 2
                 for file_name, display_name in available_models:
                     model_results = folder_results[file_name]
@@ -1135,7 +1148,7 @@ def create_comprehensive_excel(all_results: Dict, output_file: str):
                     aspect2_pct = model_results.get('overall_aspect2_percentage', 0)
                     ws.cell(row=row_idx, column=2, value=f"{aspect1_pct:.1f}/{aspect2_pct:.1f}")
 
-                    # 各category
+                    # Each category
                     for col_idx, col_name in enumerate(columns[1:], 3):
                         matching_category = None
                         for category, mapped_name in column_mapping.items():
@@ -1153,7 +1166,7 @@ def create_comprehensive_excel(all_results: Dict, output_file: str):
 
                     row_idx += 1
 
-                # 自适应列宽
+                # Auto-adjust column width
                 for col in ws.columns:
                     max_length = 0
                     column = col[0].column_letter
@@ -1166,25 +1179,25 @@ def create_comprehensive_excel(all_results: Dict, output_file: str):
                     adjusted_width = min(max_length + 2, 20)
                     ws.column_dimensions[column].width = adjusted_width
 
-    # === 创建消融实验sheet ===
+    # === Create ablation experiment sheet ===
     ablation_ws = wb.create_sheet("ablation experiment")
     
     if ablation_results:
-        # 收集所有模型名称
+        # 收集所有Model name
         all_models = set()
         for folder_results in ablation_results.values():
             for model_name, model_data in folder_results.items():
-                # 确保模型数据有效（排除特殊字段）
+                # Ensure model data is valid (exclude special fields)
                 if isinstance(model_data, dict) and any(key not in ['overall', 'completeness'] for key in model_data.keys()):
                     all_models.add(model_name)
         
-        # 使用模型管理器自动排序模型
+        # Use model manager to automatically sort models
         available_models = model_manager.get_sorted_models(all_models)
         
-        # 动态列名映射（适应不同的hints数字）
+        # Dynamic column name mapping (adapt to different hints numbers)
         def get_column_name(folder_name):
             if 'hints0' in folder_name:
-                return '无hint'
+                return 'No hint'
             elif 'hints1' in folder_name:
                 return 'Hint1'
             elif 'hints2' in folder_name:
@@ -1198,27 +1211,27 @@ def create_comprehensive_excel(all_results: Dict, output_file: str):
         
         column_mapping = {folder: get_column_name(folder) for folder in ablation_results.keys()}
         
-        # 设置表头
+        # Set headers
         headers = ['ablation experiment'] + [column_mapping.get(folder, folder) for folder in sorted(ablation_results.keys())]
         for col_idx, header in enumerate(headers, 1):
             cell = ablation_ws.cell(row=1, column=col_idx, value=header)
             cell.font = Font(bold=True)
             cell.alignment = Alignment(horizontal='center')
         
-        print(f"消融实验Excel列: {headers}")
-        print(f"消融实验指定的模型（按顺序）: {[display_name for _, display_name in available_models]}")
+        print(f"Ablation experiment Excel columns: {headers}")
+        print(f"Models specified for ablation experiment (in order): {[display_name for _, display_name in available_models]}")
         
-        # 填充数据
+        # Fill data
         row_idx = 2
         for file_name, display_name in available_models:
-            # 模型名称（显示名称）
+            # Model name（显示名称）
             ablation_ws.cell(row=row_idx, column=1, value=display_name)
             
-            # 填充各hints条件的数据
+            # Fill data for each hints condition
             col_idx = 2
             for hints_folder in sorted(ablation_results.keys()):
                 if file_name in ablation_results[hints_folder]:
-                    # 使用aspect1/aspect2格式（与主实验保持一致）
+                    # Use aspect1/aspect2 format (consistent with main experiment)
                     model_data = ablation_results[hints_folder][file_name]
                     aspect1_pct = model_data.get('overall_aspect1_percentage', 0)
                     aspect2_pct = model_data.get('overall_aspect2_percentage', 0)
@@ -1229,7 +1242,7 @@ def create_comprehensive_excel(all_results: Dict, output_file: str):
             
             row_idx += 1
         
-        # 设置列宽
+        # Set column width
         for col in ablation_ws.columns:
             max_length = 0
             column = col[0].column_letter
@@ -1242,40 +1255,40 @@ def create_comprehensive_excel(all_results: Dict, output_file: str):
             adjusted_width = min(max_length + 2, 20)
             ablation_ws.column_dimensions[column].width = adjusted_width
     
-    # 保存文件
+    # Save file
     wb.save(output_file)
-    print(f"\n结果已保存到: {output_file}")
-    print(f"包含的sheet: {[ws.title for ws in wb.worksheets]}")
+    print(f"\nResults saved to: {output_file}")
+    print(f"Included sheets: {[ws.title for ws in wb.worksheets]}")
 
 
 def print_ablation_results(all_results: Dict[str, Dict[str, Dict]]):
     """
-    打印消融实验结果摘要
+    Print ablation experiment results summary
     """
-    print(f"\n📊 消融实验结果摘要:")
+    print(f"\n📊 Ablation experiment results summary:")
     
-    # 收集所有模型
+    # Collect all models
     all_models = set()
     for folder_results in all_results.values():
         all_models.update(folder_results.keys())
     
-    # 使用模型管理器自动排序模型
+    # Use model manager to automatically sort models
     available_models = model_manager.get_sorted_models(all_models)
     
-    print(f"处理了 {len(available_models)} 个指定模型在 {len(all_results)} 个实验条件下的数据")
+    print(f"Processed {len(available_models)} specified models in {len(all_results)} experimental conditions")
     
-    # 按指定顺序显示结果
+    # Display results in specified order
     for file_name, display_name in available_models:
         print(f"\n🎯 {display_name}:")
         for hints_folder, folder_results in all_results.items():
             if file_name in folder_results:
                 model_data = folder_results[file_name]
-                # 使用aspect1/aspect2格式（与主实验保持一致）
+                # Use aspect1/aspect2 format (consistent with main experiment)
                 aspect1_pct = model_data.get('overall_aspect1_percentage', 0)
                 aspect2_pct = model_data.get('overall_aspect2_percentage', 0)
-                # 动态获取条件名称
+                # Dynamically get condition name
                 if 'hints0' in hints_folder:
-                    condition_name = '无hint'
+                    condition_name = 'No hint'
                 elif 'hints1' in hints_folder:
                     condition_name = 'Hint1'
                 elif 'hints2' in hints_folder:
@@ -1291,13 +1304,13 @@ def print_ablation_results(all_results: Dict[str, Dict[str, Dict]]):
 
 def print_completeness_issues():
     """
-    显示所有完整性问题
+    Display all completeness issues
     """
     if not all_completeness_issues:
-        print("\n✅ 所有数据完整性检查通过，没有发现缺失数据")
+        print("\n✅ All data completeness checks passed, no missing data found")
         return
     
-    print(f"\n⚠️  发现 {len(all_completeness_issues)} 个数据完整性问题:")
+    print(f"\n⚠️  Found {len(all_completeness_issues)} data completeness issues:")
     print("="*60)
     
     for issue in all_completeness_issues:
@@ -1308,35 +1321,35 @@ def print_completeness_issues():
         category_count = issue['category_count']
         
         print(f"\n🔍 {folder} - {model}:")
-        print(f"   总分: {overall_score:.1f}% | Categories: {category_count}")
-        print(f"   数据不完整: 预期 {completeness_info['total_expected']} 条，实际 {completeness_info['total_actual']} 条")
+        print(f"   Total score: {overall_score:.1f}% | Categories: {category_count}")
+        print(f"   Data incomplete: expected {completeness_info['total_expected']} entries, actual {completeness_info['total_actual']} 条")
         
         for missing in completeness_info['missing_data']:
-            print(f"   - {missing['category']}: 缺少 {missing['missing']} 条数据 ({missing['actual']}/{missing['expected']})")
+            print(f"   - {missing['category']}: missing {missing['missing']} entries ({missing['actual']}/{missing['expected']})")
 
 
 def save_completeness_issues_to_file(output_dir: str = "results"):
     """
-    将完整性问题保存到文件
+    Save completeness issues to file
     
     Args:
-        output_dir: 输出目录
+        output_dir: Output directory
     """
     if not all_completeness_issues:
         return
     
-    # 确保输出目录存在
+    # 确保Output directory存在
     os.makedirs(output_dir, exist_ok=True)
     
-    # 生成文件名（包含时间戳）
+    # Generate filename (with timestamp)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"data_completeness_issues_{timestamp}.txt"
     filepath = os.path.join(output_dir, filename)
     
     with open(filepath, 'w', encoding='utf-8') as f:
-        f.write(f"数据完整性问题报告\n")
-        f.write(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-        f.write(f"发现问题数量: {len(all_completeness_issues)}\n")
+        f.write(f"Data completeness issues report\n")
+        f.write(f"Generation time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        f.write(f"Found问题数量: {len(all_completeness_issues)}\n")
         f.write("="*60 + "\n\n")
         
         for issue in all_completeness_issues:
@@ -1346,37 +1359,37 @@ def save_completeness_issues_to_file(output_dir: str = "results"):
             overall_score = issue['overall_score']
             category_count = issue['category_count']
             
-            f.write(f"实验: {folder}\n")
-            f.write(f"模型: {model}\n")
-            f.write(f"总分: {overall_score:.1f}%\n")
+            f.write(f"Experiment: {folder}\n")
+            f.write(f"Model: {model}\n")
+            f.write(f"Total score: {overall_score:.1f}%\n")
             f.write(f"Categories数量: {category_count}\n")
-            f.write(f"数据完整性: 预期 {completeness_info['total_expected']} 条，实际 {completeness_info['total_actual']} 条\n")
-            f.write(f"缺失明细:\n")
+            f.write(f"Data completeness: 预期 {completeness_info['total_expected']} entries, actual {completeness_info['total_actual']} 条\n")
+            f.write(f"Missing details:\n")
             
             for missing in completeness_info['missing_data']:
-                f.write(f"  - {missing['category']}: 缺少 {missing['missing']} 条数据 ({missing['actual']}/{missing['expected']})\n")
+                f.write(f"  - {missing['category']}: missing {missing['missing']} entries ({missing['actual']}/{missing['expected']})\n")
             
             f.write("\n" + "-"*40 + "\n\n")
     
-    print(f"\n📄 完整性问题报告已保存到: {filepath}")
+    print(f"\n📄 Completeness issues report saved to: {filepath}")
 
 
 def print_main_results(main_results: Dict[str, Dict]):
     """
-    打印主实验结果摘要
+    打印主Experiment结果摘要
     """
-    print(f"\n📊 主实验结果摘要:")
-    print(f"处理了 {len(main_results)} 个模型的数据")
+    print(f"\n📊 主Experiment结果摘要:")
+    print(f"Processed {len(main_results)} 个Model的数据")
     
-    # 使用模型管理器自动排序模型
+    # Use model manager to automatically sort models
     available_model_names = set(main_results.keys())
     available_models = model_manager.get_sorted_models(available_model_names)
     
-    # 按排序顺序显示结果
+    # Display results in sorted order
     for file_name, display_name in available_models:
         print(f"\n🎯 {display_name}:")
         model_results = main_results[file_name]
-        # 过滤出真正的category数据，排除特殊字段
+        # Filter out real category data, exclude special fields
         for category, result in model_results.items():
             if category not in ['completeness', 'overall_score', 'overall_aspect1_percentage', 'overall_aspect2_percentage']:
                 if isinstance(result, dict) and 'calculated_scores' in result:
@@ -1385,57 +1398,57 @@ def print_main_results(main_results: Dict[str, Dict]):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="综合实验分析：同时处理主实验和消融实验数据，生成包含两个sheet的Excel文件")
-    parser.add_argument('base_path', help='包含实验数据的基础路径（包含hints文件夹和主实验文件）')
-    parser.add_argument('--output', '-o', help='输出Excel文件路径（默认：results.xlsx）', default='results.xlsx')
-    parser.add_argument('--verbose', '-v', action='store_true', help='显示详细输出')
-    parser.add_argument('--expected-count', '-c', type=int, default=50, help='每个category期望的数据条数（默认：50）')
+    parser = argparse.ArgumentParser(description="综合Experiment分析：同时处理主Experiment和消融Experiment数据，生成包含两个sheet的Excel文件")
+    parser.add_argument('base_path', help='包含Experiment数据的基础路径（包含hintsfolder和主Experiment文件）')
+    parser.add_argument('--output', '-o', help='Output Excel file path（默认：results.xlsx）', default='results.xlsx')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Show verbose output')
+    parser.add_argument('--expected-count', '-c', type=int, default=50, help='每个category期望的data count（默认：50）')
     
     args = parser.parse_args()
     
-    # 清理全局变量（防止多次运行时累积）
+    # Clear global variables (prevent accumulation during multiple runs)
     global all_completeness_issues
     all_completeness_issues = []
     
     try:
-        print("🚀 开始处理综合实验数据...")
+        print("🚀 开始处理综合Experiment数据...")
         
-        # 处理消融实验数据
+        # 处理消融Experiment数据
         print("\n" + "="*50)
-        print("🔬 消融实验数据处理")
+        print("🔬 消融Experiment数据处理")
         print("="*50)
-        print(f"每个category期望数据条数: {args.expected_count}")
+        print(f"每个category期望data count: {args.expected_count}")
         ablation_results = process_all_hints_experiments(args.base_path, args.expected_count)
         
-        # 处理主实验数据
+        # 处理主Experiment数据
         print("\n" + "="*50)
-        print("📊 主实验数据处理")
+        print("📊 主Experiment数据处理")
         print("="*50)
         main_experiment_results = process_main_experiment(args.base_path, args.expected_count)
         
-        # 检查是否有数据
+        # Check if data exists
         if not ablation_results and not main_experiment_results:
-            print("❌ 没有成功处理任何实验数据")
+            print("❌ 没有成功处理任何Experiment数据")
             return 1
         
-        # 打印结果摘要
+        # Print results summary
         if args.verbose:
             if ablation_results:
                 print_ablation_results(ablation_results)
             if main_experiment_results:
                 print_main_results(main_experiment_results)
         
-        # 确保输出文件有.xlsx扩展名
+        # Ensure output file has .xlsx extension
         output_file = args.output
         if not output_file.endswith('.xlsx'):
             output_file += '.xlsx'
         
         # 创建综合Excel文件
         print("\n" + "="*50)
-        print("📝 生成Excel报告")
+        print("📝 Generate Excel report")
         print("="*50)
         
-        # 合并所有结果用于Excel生成
+        # Merge all results for Excel generation
         all_results_for_excel = {}
         if ablation_results:
             all_results_for_excel.update(ablation_results)
@@ -1444,30 +1457,30 @@ def main():
         
         create_comprehensive_excel(all_results_for_excel, output_file)
         
-        # 显示和保存完整性问题
+        # Display and save completeness issues
         print("\n" + "="*50)
-        print("🔍 数据完整性检查结果")
+        print("🔍 Data completeness检查结果")
         print("="*50)
         print_completeness_issues()
         
-        # 保存完整性问题到文件
+        # Save completeness issues to file
         if all_completeness_issues:
             output_dir = os.path.dirname(output_file) or "results"
             save_completeness_issues_to_file(output_dir)
         
-        # 统计结果
+        # Statistics results
         ablation_count = len(ablation_results) if ablation_results else 0
         main_experiment_count = len(main_experiment_results) if main_experiment_results else 0
         
-        print(f"\n✅ 综合实验数据处理完成！")
-        print(f"🔬 消融实验: {ablation_count} 个实验条件")
-        print(f"📊 主实验: {main_experiment_count} 个模型")
+        print(f"\n✅ 综合Experiment数据处理完成！")
+        print(f"🔬 消融Experiment: {ablation_count} 个Experiment条件")
+        print(f"📊 主Experiment: {main_experiment_count} 个Model")
         print(f"📁 输出文件: {output_file}")
         if all_completeness_issues:
-            print(f"⚠️  发现 {len(all_completeness_issues)} 个数据完整性问题，详情请查看上述报告")
+            print(f"⚠️  Found {len(all_completeness_issues)} data completeness issues，Please see above report for details")
         
     except Exception as e:
-        print(f"❌ 错误: {e}")
+        print(f"❌ Error: {e}")
         import traceback
         traceback.print_exc()
         return 1

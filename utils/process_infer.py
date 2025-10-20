@@ -1,3 +1,19 @@
+#!/usr/bin/env python
+# coding=utf-8
+# Copyright 2025 The OPPO Inc. PersonalAI team. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import time
 import json
 import concurrent.futures
@@ -21,7 +37,7 @@ def run_infer_experiment(config_path: str, experiment_name: str, data_path_overr
 
     data_path = data_path_override or exp_config.get('input_data')
     if not data_path:
-        raise ValueError(f"实验 '{experiment_name}' 没有配置input_data，且未通过--data参数指定")
+        raise ValueError(f"Experiment '{experiment_name}' has no input_data configured, and no --data parameter specified")
 
     with open(prompt_file, 'r', encoding='utf-8') as f:
         prompt_template = f.read().strip()
@@ -69,7 +85,7 @@ def run_infer_experiment(config_path: str, experiment_name: str, data_path_overr
 
         def worker(item_data):
             _, item = item_data
-            # 使用安全渲染，缺失字段自动回退为空字符串
+            # Use safe rendering, missing fields automatically fallback to empty string
             prompt = build_prompt_safe(prompt_template, item)
             resp = clients.call_llm(model_name, prompt)
             return item, prompt, resp
@@ -119,7 +135,7 @@ def run_infer_experiment(config_path: str, experiment_name: str, data_path_overr
                             f.write(json.dumps(err, ensure_ascii=False) + '\n')
                         failed += 1
                     pbar.update(1)
-                    pbar.set_postfix({'成功': successful, '失败': failed})
+                    pbar.set_postfix({'Success': successful, 'Failed': failed})
 
         total_time = time.time() - start
         stats = {
@@ -138,10 +154,8 @@ def run_infer_experiment(config_path: str, experiment_name: str, data_path_overr
 
 
 def main():
-    print("process_infer: 使用 run_infer_experiment() 运行推理实验。")
+    print("process_infer: Use run_infer_experiment() to run inference experiments.")
 
 
 if __name__ == "__main__":
     main()
-
-
